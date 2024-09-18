@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Genie Vr 5.2</title>
+    <style>
+        body {
+            background-color: orange;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 3em;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        h2 {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        td {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 1.5em;
+            position: relative;
+        }
+
+        th {
+            padding: 10px;
+            font-size: 1.2em;
+        }
+
+        .bold-border-top {
+            border-top: 4px solid black;
+        }
+
+        .bold-border-left {
+            border-left: 4px solid black;
+        }
+
+        .bold-border-bottom {
+            border-bottom: 4px solid black;
+        }
+
+        .bold-border-right {
+            border-right: 4px solid black;
+        }
+
+        .gray-background {
+            background-color: lightgray;
+        }
+
+        input {
+            width: 100%;
+            height: 100%;
+            font-size: 1.5em;
+            font-style: italic;
+            text-align: center;
+        }
+
+        input.solved {
+            font-size: 2em;
+            font-style: normal;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .error {
+            color: red;
+        }
+
+        #solveButton, #resetButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+
+        #message {
+            margin-top: 20px;
+            font-size: 1.2em;
+            padding: 10px;
+            color: red;
+            background-color: black;
+            display: none;
+        }
+
+        #solvedBackground {
+            background-color: lightgreen;
+        }
+    </style>
+</head>
+<body>
+    <h1>SudokuGenie Vr 5.2</h1>
+    <h2>Created by : Mustafa ElHassanin <br> &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp; * ©2024*</h2>
+
+    <table id="sudokuGrid">
+        <thead>
+            <tr>
+                <th></th>
+                <th>A</th>
+                <th>B</th>
+                <th>C</th>
+                <th>D</th>
+                <th>E</th>
+                <th>F</th>
+                <th>G</th>
+                <th>H</th>
+                <th>I</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Add table rows dynamically with JavaScript -->
+        </tbody>
+    </table>
+
+    <button id="solveButton">Solve Sudoku</button>
+    <button id="resetButton">Reset</button>
+
+    <div id="message"></div>
+
+    <script>
+        const gridSize = 9;
+
+        function createSudokuGrid() {
+            const table = document.getElementById('sudokuGrid').querySelector('tbody');
+            const letters = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+
+            for (let row = 0; row < gridSize; row++) {
+                const tr = document.createElement('tr');
+                const rowHeader = document.createElement('th');
+                rowHeader.innerText = letters[row];
+                tr.appendChild(rowHeader);
+
+                for (let col = 0; col < gridSize; col++) {
+                    const td = document.createElement('td');
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'text');
+                    input.setAttribute('maxlength', '1');
+                    input.setAttribute('data-row', row);
+                    input.setAttribute('data-col', col);
+                    input.oninput = validateInput;
+
+                    if (row % 3 === 0) {
+                        td.classList.add('bold-border-top');
+                    }
+                    if (col % 3 === 0) {
+                        td.classList.add('bold-border-left');
+                    }
+                    if (row === gridSize - 1) {
+                        td.classList.add('bold-border-bottom');
+                    }
+                    if (col === gridSize - 1) {
+                        td.classList.add('bold-border-right');
+                    }
+
+                    const isGrayBackground = (Math.floor(row / 3) + Math.floor(col / 3)) % 2 === 0;
+                    if (isGrayBackground) {
+                        td.classList.add('gray-background');
+                    }
+
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+        }
+
+        function validateInput(event) {
+            const value = event.target.value;
+            const validNumbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            if (!validNumbers.includes(value)) {
+                event.target.value = '';
+            }
+            checkForErrors();
+        }
+
+        function checkForErrors() {
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => input.classList.remove('error'));
+
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const currentInput = document.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+                    if (currentInput.value) {
+                        const rowConflict = checkRowConflict(row, col, currentInput.value);
+                        const colConflict = checkColConflict(row, col, currentInput.value);
+                        const boxConflict = checkBoxConflict(row, col, currentInput.value);
+
+                        if (rowConflict || colConflict || boxConflict) {
+                            currentInput.classList.add('error');
+                        }
+                    }
+                }
+            }
+        }
+
+        function checkRowConflict(row, col, value) {
+            for (let c = 0; c < gridSize; c++) {
+                if (c !== col && document.querySelector(`input[data-row="${row}"][data-col="${c}"]`).value === value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function checkColConflict(row, col, value) {
+            for (let r = 0; r < gridSize; r++) {
+                if (r !== row && document.querySelector(`input[data-row="${r}"][data-col="${col}"]`).value === value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function checkBoxConflict(row, col, value) {
+            const boxRow = Math.floor(row / 3) * 3;
+            const boxCol = Math.floor(col / 3) * 3;
+            for (let r = boxRow; r < boxRow + 3; r++) {
+                for (let c = boxCol; c < boxCol + 3; c++) {
+                    if (r !== row || c !== col) {
+                        const input = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                        if (input.value === value) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function solveSudoku() {
+            if (hasErrors()) {
+                document.getElementById('message').innerText = "You shouldn't repeat numbers in the same row, column, or 3x3 box. Please correct the errors highlighted in red.";
+                document.getElementById('message').style.display = "block";
+                document.body.style.backgroundColor = 'yellow';
+                return;
+            }
+
+            const board = [];
+            const inputs = document.querySelectorAll('input');
+
+            for (let row = 0; row < gridSize; row++) {
+                board[row] = [];
+                for (let col = 0; col < gridSize; col++) {
+                    const value = document.querySelector(`input[data-row="${row}"][data-col="${col}"]`).value;
+                    board[row][col] = value ? parseInt(value) : 0;
+                }
+            }
+
+            if (solve(board)) {
+                displaySolution(board);
+            } else {
+                document.getElementById('message').innerText = "No solution exists!";
+                document.getElementById('message').style.display = "block";
+            }
+        }
+
+        function hasErrors() {
+            return document.querySelectorAll('input.error').length > 0;
+        }
+
+        function solve(board) {
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    if (board[row][col] === 0) {
+                        for (let num = 1; num <= 9; num++) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num;
+
+                                if (solve(board)) {
+                                    return true;
+                                }
+                                board[row][col] = 0;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function isValid(board, row, col, num) {
+            for (let i = 0; i < gridSize; i++) {
+                if (board[row][i] === num || board[i][col] === num || 
+                    board[Math.floor(row / 3) * 3 + Math.floor(i / 3)][Math.floor(col / 3) * 3 + i % 3] === num) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function displaySolution(board) {
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const input = document.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+                    input.value = board[row][col];
+                    input.classList.add('solved');
+                }
+            }
+            document.body.style.backgroundColor = 'lightgreen';
+        }
+
+        function resetSudoku() {
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.value = '';
+                input.classList.remove('solved', 'error');
+            });
+            document.body.style.backgroundColor = 'orange';
+            document.getElementById('message').style.display = 'none';
+        }
+
+        document.getElementById('solveButton').addEventListener('click', solveSudoku);
+        document.getElementById('resetButton').addEventListener('click', resetSudoku);
+
+        createSudokuGrid();
+    </script>
+</body>
+</html>
